@@ -1,0 +1,5 @@
+package: nordvpnapiv1
+output: nordvpnapiv1.gen.go
+generate:
+  models: true
+  client: true
