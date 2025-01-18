@@ -67,6 +67,7 @@ paths:
         '200':
           $ref: '#/components/responses/TechnologiesResponse'
 
+
 components:
 
   parameters:

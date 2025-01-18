@@ -1,0 +1,80 @@
+openapi: 3.0.0
+
+info:
+  title: NordVPN API
+  version: 1.0.0
+
+servers:
+  - url: "https://web-api.nordvpn.com"
+
+paths:
+
+  /v1/ips/info:
+    get:
+      operationId: getIPInfo
+      responses:
+        '200':
+          $ref: '#/components/responses/IPInfoResponse'
+
+
+components:
+
+  responses:
+
+    IPInfoResponse:
+      description: Details of the clients IP
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/IPInfo'
+
+  schemas:
+
+    IPInfo:
+      type: object
+      required:
+        - ip
+        - country
+        - country_code
+        - region
+        - zip_code
+        - city
+        - state_code
+        - longitude
+        - latitude
+        - isp
+        - isp_asn
+        - gdpr
+        - protected
+      properties:
+        ip:
+          type: string
+        country:
+          type: string
+        country_code:
+          type: string
+        region:
+          type:
+            string
+        zip_code:
+          type:
+            string
+        city:
+          type:
+            string
+        state_code:
+          type: string
+        longitude:
+          type: number
+          format: double
+        latitude:
+          type: number
+          format: double
+        isp:
+          type: string
+        isp_asn:
+          type: string
+        gdpr:
+          type: boolean
+        protected:
+          type: boolean

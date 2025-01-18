@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"go-nordvpn/nordvpnapiv1"
+	"go-nordvpn/nordvpnwebapiv1"
 	"go-nordvpn/pkg/api"
 	"go-nordvpn/pkg/template"
 	"go-nordvpn/pkg/utils"
@@ -12,7 +13,6 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
-	"sort"
 )
 
 var maxLimit nordvpnapiv1.Limit = math.MaxInt16
@@ -38,10 +38,22 @@ func logServer(num int, server nordvpnapiv1.Server) {
 
 func main() {
 
-	hc := http.Client{}
-	c, err := nordvpnapiv1.NewClientWithResponses("https://api.nordvpn.com", nordvpnapiv1.WithHTTPClient(&hc))
+	webApiHTTPClient := http.Client{}
+
+	webApiClient, err := nordvpnwebapiv1.NewClientWithResponses("https://web-api.nordvpn.com", nordvpnwebapiv1.WithHTTPClient(&webApiHTTPClient))
 	if err != nil {
-		log.Panic("Failed to create client", err)
+		log.Panic("Failed to create a NordVPN WebAPI client", err)
+	}
+	ipInfo, err := api.GetIPInfo(webApiClient)
+	if err != nil {
+		log.Panic("Failed to get IP Info", err)
+	}
+	slog.Info("Your IP Info", "IP", ipInfo.Ip)
+
+	apiHTTPClient := http.Client{}
+	apiClient, err := nordvpnapiv1.NewClientWithResponses("https://api.nordvpn.com", nordvpnapiv1.WithHTTPClient(&apiHTTPClient))
+	if err != nil {
+		log.Panic("Failed to create a NordVPN API client", err)
 	}
 
 	serverParams := nordvpnapiv1.GetServersParams{
@@ -49,7 +61,7 @@ func main() {
 		FiltersStatus: &statusOnline,
 	}
 
-	technology, err := api.GetTechnologyFromEnvVar(c)
+	technology, err := api.GetTechnologyFromEnvVar(apiClient)
 	if err != nil {
 		log.Panic("Failed to get technologies", err)
 	}
@@ -65,7 +77,7 @@ func main() {
 		log.Fatal("Failed to get protocol and port", err)
 	}
 
-	country, err := api.GetCountryFromEnvVar(c)
+	country, err := api.GetCountryFromEnvVar(apiClient)
 	if err != nil {
 		log.Panic("Failed to get countries", err)
 	}
@@ -77,7 +89,7 @@ func main() {
 		serverParams.FiltersCountryId = &country.Id
 	}
 
-	groups, err := api.GetGroupsFromEnvVar(c)
+	groups, err := api.GetGroupsFromEnvVar(apiClient)
 	if err != nil {
 		log.Panic("failed to get groups", err)
 	}
@@ -96,7 +108,7 @@ func main() {
 		}
 	}
 
-	resp, err := c.GetServersWithResponse(context.TODO(), &serverParams)
+	resp, err := apiClient.GetServersWithResponse(context.TODO(), &serverParams)
 
 	if err != nil {
 		log.Panic("Failed to get servers", err)
@@ -142,6 +154,7 @@ func main() {
 			randomTop = nil
 		}
 	}
+
 	if randomTop == nil {
 		maxSelected = 10
 	}
@@ -151,7 +164,11 @@ func main() {
 		log.Fatal("No servers matched all the criteria")
 	}
 
-	sort.Sort(api.ServersByLoad(servers))
+	if ipInfo == nil {
+		servers.SortByLoad()
+	} else {
+		servers.SortByDistanceAndLoad(ipInfo.Longitude, ipInfo.Latitude)
+	}
 
 	maxDisplay := min(10, len(servers))
 	slog.Info(fmt.Sprintf("Top %d of %d selected nordvpn servers:", maxDisplay, maxSelected))

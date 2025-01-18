@@ -5,6 +5,8 @@ import (
 	"go-nordvpn/nordvpnapiv1"
 	"go-nordvpn/pkg/utils"
 	"log/slog"
+	"math"
+	"sort"
 )
 
 const ServerCityEnvName = "CITY"
@@ -181,8 +183,25 @@ func GetCityEnvVarValue() *utils.StringOrInt32Array {
 	return nil
 }
 
-type ServersByLoad ServerArray
+func distance(locations ServerLocationArray, longitude float64, latitude float64) float64 {
+	d := math.MaxFloat64
+	for _, location := range locations {
+		d = math.Min(d, math.Sqrt(math.Pow(location.Longitude-longitude, 2)+math.Pow(location.Latitude-latitude, 2)))
+	}
+	return d
+}
 
-func (a ServersByLoad) Len() int           { return len(a) }
-func (a ServersByLoad) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ServersByLoad) Less(i, j int) bool { return a[i].Load < a[j].Load }
+func (s ServerArray) SortByDistanceAndLoad(longitude float64, latitude float64) {
+	sort.Slice(s, func(i, j int) bool {
+		if distance(s[i].Locations, longitude, latitude) < distance(s[j].Locations, longitude, latitude) {
+			return true
+		}
+		return s[i].Load < s[j].Load
+	})
+}
+
+func (s ServerArray) SortByLoad() {
+	sort.Slice(s, func(i, j int) bool {
+		return s[i].Load < s[j].Load
+	})
+}
