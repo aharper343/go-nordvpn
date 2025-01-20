@@ -183,18 +183,43 @@ func GetCityEnvVarValue() *utils.StringOrInt32Array {
 	return nil
 }
 
-func distance(locations ServerLocationArray, longitude float64, latitude float64) float64 {
-	d := math.MaxFloat64
-	for _, location := range locations {
-		d = math.Min(d, math.Sqrt(math.Pow(location.Longitude-longitude, 2)+math.Pow(location.Latitude-latitude, 2)))
-	}
-	return d
+func deg2rad(deg float64) float64 {
+	return deg * math.Pi / 180
 }
 
-func (s ServerArray) SortByDistanceAndLoad(longitude float64, latitude float64) {
+const earthRadius = 6371.0
+
+func distanceFromLatLonInKm(lat1 float64, lon1 float64, lat2 float64, lon2 float64) float64 {
+	dLat := deg2rad(lat2 - lat1)
+	dLon := deg2rad(lon2 - lon1)
+	a := (math.Sin(dLat/2) * math.Sin(dLat/2)) +
+		math.Cos(deg2rad(lat1))*
+			math.Cos(deg2rad(lat2))*
+			(math.Sin(dLon/2)*math.Sin(dLon/2))
+	angle := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	return angle * earthRadius
+}
+
+func distance(locations ServerLocationArray, latitude float64, longitude float64) float64 {
+	r := math.MaxFloat64
+	for _, location := range locations {
+		d := distanceFromLatLonInKm(latitude, longitude, location.Country.City.Latitude, location.Country.City.Longitude)
+		if d < r {
+			r = d
+		}
+	}
+	return r
+}
+
+func (s ServerArray) SortByDistanceAndLoad(latitude float64, longitude float64) {
 	sort.Slice(s, func(i, j int) bool {
-		if distance(s[i].Locations, longitude, latitude) < distance(s[j].Locations, longitude, latitude) {
+		dI := distance(s[i].Locations, latitude, longitude)
+		dJ := distance(s[j].Locations, latitude, longitude)
+		if dI < dJ {
 			return true
+		}
+		if dI > dJ {
+			return false
 		}
 		return s[i].Load < s[j].Load
 	})

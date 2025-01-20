@@ -16,10 +16,10 @@ import (
 )
 
 var maxLimit nordvpnapiv1.Limit = math.MaxInt16
-var statusOnline nordvpnapiv1.ServerStatus = nordvpnapiv1.ServerStatusOnline
+var statusOnline = nordvpnapiv1.ServerStatusOnline
 
 func logServer(num int, server nordvpnapiv1.Server) {
-	slog.Info("\tServer", "#", num, "id", server.Id, "hostname", server.Hostname, "load", server.Load, "ip", server.Station)
+	slog.Info("\tServer", "#", num, "id", server.Id, "status", server.Status, "hostname", server.Hostname, "load", server.Load, "ip", server.Station)
 	cities := api.ServerLocationArray(server.Locations).GetCitiesFromEnvVar()
 	if cities == nil {
 		found := map[int32]bool{}
@@ -48,7 +48,19 @@ func main() {
 	if err != nil {
 		log.Panic("Failed to get IP Info", err)
 	}
-	slog.Info("Your IP Info", "IP", ipInfo.Ip)
+	slog.Info("Your IP Info", "IP", ipInfo.Ip,
+		"Country", ipInfo.Country,
+		"CountryCode", ipInfo.CountryCode,
+		"Region", ipInfo.Region,
+		"ZipCode", ipInfo.ZipCode,
+		"City", ipInfo.City,
+		"StateCode", ipInfo.StateCode,
+		"Latitude", ipInfo.Latitude,
+		"Longitude", ipInfo.Longitude,
+		"ISP", ipInfo.Isp,
+		"ISP-ASN", ipInfo.IspAsn,
+		"GDPR?", ipInfo.Gdpr,
+		"Protected?", ipInfo.Protected)
 
 	apiHTTPClient := http.Client{}
 	apiClient, err := nordvpnapiv1.NewClientWithResponses("https://api.nordvpn.com", nordvpnapiv1.WithHTTPClient(&apiHTTPClient))
@@ -167,7 +179,7 @@ func main() {
 	if ipInfo == nil {
 		servers.SortByLoad()
 	} else {
-		servers.SortByDistanceAndLoad(ipInfo.Longitude, ipInfo.Latitude)
+		servers.SortByDistanceAndLoad(ipInfo.Latitude, ipInfo.Longitude)
 	}
 
 	maxDisplay := min(10, len(servers))
