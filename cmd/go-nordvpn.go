@@ -18,7 +18,87 @@ import (
 var maxLimit nordvpnapiv1.Limit = math.MaxInt16
 var statusOnline = nordvpnapiv1.ServerStatusOnline
 
-func logServer(num int, server nordvpnapiv1.Server) {
+func longLogServer(server nordvpnapiv1.Server) {
+	slog.Info("Server",
+		"id", server.Id,
+		"name", server.Name,
+		"station", server.Station,
+		"ipv6_station", server.Ipv6Station,
+		"hostname", server.Hostname,
+		"load", server.Load,
+		"status", server.Status)
+	for l, location := range server.Locations {
+		slog.Info("\tLocation", "#", l,
+			"id", location.Id,
+			"latitude", location.Latitude,
+			"longitude", location.Longitude)
+		slog.Info("\t\tCountry",
+			"id", location.Country.Id,
+			"name", location.Country.Name,
+			"code", location.Country.Code)
+		slog.Info("\t\t\tCity",
+			"id", location.Country.City.Id,
+			"name", location.Country.City.Name,
+			"dns_name", location.Country.City.DnsName,
+			"hub_score", location.Country.City.HubScore,
+			"latitude", location.Country.City.Latitude,
+			"longitude", location.Country.City.Longitude)
+	}
+	for s, service := range server.Services {
+		slog.Info("\tService", "#", s,
+			"id", service.Id,
+			"name", service.Name,
+			"identifier", service.Identifier)
+	}
+	for t, technology := range server.Technologies {
+		slog.Info("\tTechnology", "#", t,
+			"id", technology.Id,
+			"name", technology.Name,
+			"identifier", technology.Identifier)
+		for m, metadata := range technology.Metadata {
+			slog.Info("\t\tMetadata", "#", m,
+				"name", metadata.Name,
+				"value", metadata.Value)
+		}
+		slog.Info("\t\tPivot",
+			"technology_id", technology.Pivot.TechnologyId,
+			"server_id", technology.Pivot.ServerId,
+			"status", technology.Pivot.Status)
+	}
+	for g, group := range server.Groups {
+		slog.Info("\tGroup", "#", g,
+			"id", group.Id,
+			"title", group.Title,
+			"identifier", group.Identifier)
+		slog.Info("\t\tType",
+			"id", group.Type.Id,
+			"title", group.Type.Title,
+			"identifier", group.Type.Identifier)
+	}
+	for s, specification := range server.Specifications {
+		slog.Info("\tSpecification", "#", s,
+			"id", specification.Id,
+			"title", specification.Title,
+			"identifier", specification.Identifier)
+		for v, value := range specification.Values {
+			slog.Info("\t\tValue", "#", v,
+				"id", value.Id,
+				"value", value.Value)
+		}
+	}
+	for i, ips := range server.Ips {
+		slog.Info("\tIPs", "#", i,
+			"id", ips.Id,
+			"server_id", ips.ServerId,
+			"type", ips.Type)
+		slog.Info("\t\tIP",
+			"id", ips.Ip.Id,
+			"ip", ips.Ip.Ip,
+			"version", ips.Ip.Version)
+	}
+}
+
+func shortLogServer(num int, server nordvpnapiv1.Server) {
 	slog.Info("\tServer", "#", num, "id", server.Id, "status", server.Status, "hostname", server.Hostname, "load", server.Load, "ip", server.Station)
 	cities := api.ServerLocationArray(server.Locations).GetCitiesFromEnvVar()
 	if cities == nil {
@@ -48,19 +128,19 @@ func main() {
 	if err != nil {
 		log.Panic("Failed to get IP Info", err)
 	}
-	slog.Info("Your IP Info", "IP", ipInfo.Ip,
-		"Country", ipInfo.Country,
-		"CountryCode", ipInfo.CountryCode,
-		"Region", ipInfo.Region,
-		"ZipCode", ipInfo.ZipCode,
-		"City", ipInfo.City,
-		"StateCode", ipInfo.StateCode,
-		"Latitude", ipInfo.Latitude,
-		"Longitude", ipInfo.Longitude,
-		"ISP", ipInfo.Isp,
-		"ISP-ASN", ipInfo.IspAsn,
-		"GDPR?", ipInfo.Gdpr,
-		"Protected?", ipInfo.Protected)
+	slog.Info("Your IP Info", "ip", ipInfo.Ip,
+		"country", ipInfo.Country,
+		"country_code", ipInfo.CountryCode,
+		"region", ipInfo.Region,
+		"zip_code", ipInfo.ZipCode,
+		"city", ipInfo.City,
+		"state_code", ipInfo.StateCode,
+		"latitude", ipInfo.Latitude,
+		"longitude", ipInfo.Longitude,
+		"isp", ipInfo.Isp,
+		"isp_asn", ipInfo.IspAsn,
+		"gdpr", ipInfo.Gdpr,
+		"protected", ipInfo.Protected)
 
 	apiHTTPClient := http.Client{}
 	apiClient, err := nordvpnapiv1.NewClientWithResponses("https://api.nordvpn.com", nordvpnapiv1.WithHTTPClient(&apiHTTPClient))
@@ -185,7 +265,7 @@ func main() {
 	maxDisplay := min(10, len(servers))
 	slog.Info(fmt.Sprintf("Top %d of %d selected nordvpn servers:", maxDisplay, maxSelected))
 	for i := 0; i < maxDisplay; i++ {
-		logServer(i+1, servers[i])
+		shortLogServer(i+1, servers[i])
 	}
 
 	selected := 0
@@ -194,9 +274,9 @@ func main() {
 	}
 	server := servers[selected]
 
-	slog.Info("Selected server:")
-	logServer(selected+1, server)
-	slog.Info("\t\tConfig", "protocol", protocol, "port", port)
+	slog.Info("Selected server:", "#", selected+1)
+	slog.Info("\tConfig", "protocol", protocol, "port", port)
+	longLogServer(server)
 	err = template.WriteOVPNFile(server.Hostname, server.Station, protocol, port)
 	if err != nil {
 		log.Panic("Failed to create OpenVPN configuration", err)
