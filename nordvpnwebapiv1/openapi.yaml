@@ -73,7 +73,7 @@ components:
         isp:
           type: string
         isp_asn:
-          type: string
+          type: integer
         gdpr:
           type: boolean
         protected:
